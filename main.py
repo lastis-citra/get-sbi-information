@@ -65,8 +65,6 @@ def get_ja_table_data(table_tag, name, data_list):
     table_tag = soup.select_one('table[bgcolor="#9fbf99"]')
     df = pd.read_html(str(table_tag), header=0)[0]
     df = format_data(df, name, data_list)
-    pd.set_option('display.max_rows', None)
-    pd.set_option('display.max_columns', None)
     # print(df)
 
     # コードを取得してdfに追加する処理
@@ -135,10 +133,82 @@ def get_ja_data(driver):
     df_ja_result = pd.concat(
         [df_stock_specific, df_stock_fund_nisa, df_fund_specific, df_fund_nisa, df_fund_nisa_accumulation])
     # df_ja_result['date'] = datetime.date.today()
+    # code順に並び替え，インデックスを0から順に振り直す
+    df_ja_result = df_ja_result.sort_values('code').reset_index()
+    # print(df_ja_result)
+
+    # first：最初の値以外は重複(True)として扱う
+    duplicated_bool = df_ja_result.duplicated(subset=['code'], keep='first')
+    # print(duplicated_bool)
+
+    delete_row_list = []
+    before_ratio_value_list = []
+    count = 0
+    old_number = 0
+    old_unit_price = 0
+    for index, row in df_ja_result.iterrows():
+        if duplicated_bool[count]:
+            # 現在値
+            now_value = row[4]
+
+            # 数量
+            number = int(row[2])
+            added_number = number + old_number
+            df_ja_result.iloc[count, 2] = added_number
+            # print(f'old_number: {old_number}, number: {number}, added_number: {added_number}')
+
+            # 取得単価
+            unit_price = int(row[3])
+            added_unit_price = (old_number * old_unit_price + number * unit_price) / added_number
+            df_ja_result.iloc[count, 3] = int(added_unit_price)
+
+            # 評価額（小数点以下2位で丸め）
+            added_valuation = added_number * now_value / 10000
+            df_ja_result.iloc[count, 9] = round(added_valuation, 2)
+
+            # 損益
+            added_profit = added_valuation - added_number * added_unit_price / 10000
+            df_ja_result.iloc[count, 7] = round(added_profit, 2)
+
+            # 損益（％）
+            added_profit_rate = now_value / added_unit_price * 100 - 100
+            df_ja_result.iloc[count, 8] = round(added_profit_rate, 2)
+
+            delete_row_list.append(count - 1)
+
+        # print(row[2])
+        old_number = int(row[2])
+        old_unit_price = int(row[3])
+        count += 1
+
+    df_ja_result = df_ja_result.drop(delete_row_list)
+    for index, row in df_ja_result.iterrows():
+        # 現在値
+        now_value = row[4]
+        # 前日比（％）
+        before_ratio = row[6]
+
+        # 前日比（金額）
+        before_ratio_value = before_ratio * row[2] * now_value / 10000 / 100
+
+        before_ratio_value_list.append(round(before_ratio_value, 2))
+
+    df_ja_result['前日比（金額）'] = before_ratio_value_list
+    df_ja_result = df_ja_result.reset_index().drop(columns=['level_0', 'index'])
     print(df_ja_result)
 
 
 def main():
+    pd.set_option('display.max_rows', None)
+    pd.set_option('display.max_columns', None)
+    pd.set_option('display.max_seq_items', None)
+    pd.set_option('display.max_colwidth', 500)
+    pd.set_option('expand_frame_repr', True)
+    # print時の折り返し幅の拡張
+    pd.set_option('display.width', 500)
+    # 全角文字幅を考慮して表示
+    pd.set_option('display.unicode.east_asian_width', True)
+
     user_id = os.environ.get('ID')
     user_password = os.environ.get('PASSWORD')
     driver_path = os.environ.get('DRIVER_PATH')
