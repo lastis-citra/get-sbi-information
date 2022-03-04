@@ -197,6 +197,27 @@ def get_ja_data(driver):
     df_ja_result = df_ja_result.reset_index().drop(columns=['level_0', 'index'])
     print(df_ja_result)
 
+    print('総合計')
+    # 評価額総合計
+    total_valuation = df_ja_result['評価額'].sum()
+    print(f'評価額: {"{:,.0f}".format(total_valuation)}円')
+
+    # 損益総合計
+    total_profit = df_ja_result['損益'].sum()
+    print(f'含み損益: {"{:,.0f}".format(total_profit)}円')
+
+    # 損益（％）総合計
+    total_profit_rate = total_profit / (total_valuation - total_profit) * 100
+    print(f'含み損益: {round(total_profit_rate, 2)}％')
+
+    # 前日比（金額）総合計
+    total_before_ratio_value = df_ja_result['前日比（金額）'].sum()
+    print(f'前日比: {"{:,.0f}".format(total_before_ratio_value)}円')
+
+    # 前日比（％）総合計
+    total_before_ratio = total_before_ratio_value / (total_valuation - total_before_ratio_value) * 100
+    print(f'前日比: {round(total_before_ratio, 2)}％')
+
 
 def main():
     pd.set_option('display.max_rows', None)
