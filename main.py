@@ -67,8 +67,9 @@ def get_ja_table_data(table_tag, name, data_list):
     df = format_data(df, name, data_list)
     pd.set_option('display.max_rows', None)
     pd.set_option('display.max_columns', None)
-    print(df)
+    # print(df)
 
+    # コードを取得してdfに追加する処理
     tr_tags = soup.select('tr[align=center]')
     code_list = []
     for tr_tag in tr_tags:
