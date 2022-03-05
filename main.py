@@ -97,47 +97,47 @@ def merge_same_code(df):
     for index, row in df.iterrows():
         if duplicated_bool[count]:
             # 現在値
-            now_value = row[4]
+            now_value = row['現在値']
 
             # 数量
-            number = int(row[2])
+            number = int(row['数量'])
             added_number = number + old_number
-            df.iloc[count, 2] = added_number
+            df.loc[count, '数量'] = added_number
             # print(f'old_number: {old_number}, number: {number}, added_number: {added_number}')
 
             # 取得単価
-            unit_price = int(row[3])
+            unit_price = int(row['取得単価'])
             added_unit_price = (old_number * old_unit_price + number * unit_price) / added_number
-            df.iloc[count, 3] = int(added_unit_price)
+            df.loc[count, '取得単価'] = int(added_unit_price)
 
             # 評価額（小数点以下2位で丸め）
             added_valuation = added_number * now_value / 10000
-            df.iloc[count, 9] = round(added_valuation, 2)
+            df.loc[count, '評価額'] = round(added_valuation, 2)
 
             # 損益
             added_profit = added_valuation - added_number * added_unit_price / 10000
-            df.iloc[count, 7] = round(added_profit, 2)
+            df.loc[count, '損益'] = round(added_profit, 2)
 
             # 損益（％）
             added_profit_rate = now_value / added_unit_price * 100 - 100
-            df.iloc[count, 8] = round(added_profit_rate, 2)
+            df.loc[count, '損益（％）'] = round(added_profit_rate, 2)
 
             delete_row_list.append(count - 1)
 
         # print(row[2])
-        old_number = int(row[2])
-        old_unit_price = int(row[3])
+        old_number = int(row['数量'])
+        old_unit_price = int(row['取得単価'])
         count += 1
 
     df = df.drop(delete_row_list)
     for index, row in df.iterrows():
         # 現在値
-        now_value = row[4]
+        now_value = row['現在値']
         # 前日比（％）
-        before_ratio = row[6]
+        before_ratio = row['前日比（％）']
 
         # 前日比（金額）
-        before_ratio_value = before_ratio * row[2] * now_value / 10000 / 100
+        before_ratio_value = before_ratio * row['数量'] * now_value / 10000 / 100
 
         before_ratio_value_list.append(round(before_ratio_value, 2))
 
