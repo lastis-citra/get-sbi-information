@@ -142,8 +142,7 @@ def merge_same_code(df):
         before_ratio_value_list.append(round(before_ratio_value, 2))
 
     df['前日比（金額）'] = before_ratio_value_list
-    df = df.reset_index().drop(columns=['level_0', 'index'])
-
+    df = df.reset_index().drop(columns=['level_0', 'index', 'カテゴリー'])
     print(df)
 
     return df
