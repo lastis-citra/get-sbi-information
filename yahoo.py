@@ -39,7 +39,7 @@ def update_now_value(df):
         df.loc[count, '前日比（％）'] = round(change_price_rate, 2)
 
         # 前日比（金額）
-        df.loc[count, '前日比（金額）'] = round(change_price_rate * number * price / 10000 / 100, 2)
+        df.loc[count, '前日比（金額）'] = round(change_price_rate / (100 + change_price_rate) * number * price / 10000, 2)
 
         count += 1
 

@@ -137,7 +137,7 @@ def merge_same_code(df):
         before_ratio = row['前日比（％）']
 
         # 前日比（金額）
-        before_ratio_value = before_ratio * row['数量'] * now_value / 10000 / 100
+        before_ratio_value = before_ratio / (100 + before_ratio) * row['数量'] * now_value / 10000
 
         before_ratio_value_list.append(round(before_ratio_value, 2))
 
