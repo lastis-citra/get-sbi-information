@@ -1,12 +1,12 @@
 import os
 import time
-import datetime
 import pandas as pd
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome import service as cs
 from selenium.webdriver.chrome.options import Options
 from bs4 import BeautifulSoup
+import yahoo
 
 
 # 参考: https://hato.yokohama/scraping_sbi_investment/
@@ -225,6 +225,12 @@ def get_ja_data(driver):
 
     # 同じcodeの株式や投資信託を1つのデータにまとめる
     df_ja_result = merge_same_code(df_ja_result)
+
+    # 総合計を算出する
+    calc_total(df_ja_result)
+
+    # 最新の基準価額に更新する
+    df_ja_result = yahoo.update_now_value(df_ja_result)
 
     # 総合計を算出する
     calc_total(df_ja_result)
