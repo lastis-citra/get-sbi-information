@@ -2,14 +2,16 @@ import requests
 from bs4 import BeautifulSoup
 import json
 import calc
+import util
 
 
 def update_now_value(df):
     count = 0
+    unit_number = 10000
     for index, row in df.iterrows():
         # なぜかcodeの先頭に余分な2が付いているので削除する
         code = row['code'][1:]
-        update_date, price, change_price, change_price_rate = get_quote(code)
+        update_date, price, change_price, change_price_rate = get_ja_quote(code)
 
         # 現在値
         df.loc[count, '現在値'] = price
@@ -21,11 +23,11 @@ def update_now_value(df):
         unit_price = int(row['取得単価'])
 
         # 評価額（小数点以下2位で丸め）
-        valuation = calc.calc_valuation(number, price)
+        valuation = calc.calc_valuation(number, unit_number, price)
         df.loc[count, '評価額'] = round(valuation, 2)
 
         # 損益
-        profit = calc.calc_profit(number, unit_price, valuation)
+        profit = calc.calc_profit(number, unit_number, unit_price, valuation)
         df.loc[count, '損益'] = round(profit, 2)
 
         # 損益（％）
@@ -39,7 +41,7 @@ def update_now_value(df):
         df.loc[count, '前日比（％）'] = round(change_price_rate, 2)
 
         # 前日比（金額）
-        df.loc[count, '前日比（金額）'] = round(calc.calc_change_price(price, number, change_price_rate), 2)
+        df.loc[count, '前日比（金額）'] = round(calc.calc_change_price(price, number, unit_number, change_price_rate), 2)
 
         count += 1
 
@@ -48,7 +50,7 @@ def update_now_value(df):
     return df
 
 
-def get_quote(code):
+def get_ja_quote(code):
     url = 'https://finance.yahoo.co.jp/quote/' + code
     res = requests.get(url)
     res.encoding = res.apparent_encoding
@@ -71,7 +73,86 @@ def get_quote(code):
         price = json_data['mainFundPriceBoard']['fundPrices']['price']
         change_price = json_data['mainFundPriceBoard']['fundPrices']['changePrice']
         change_price_rate = json_data['mainFundPriceBoard']['fundPrices']['changePriceRate']
-        print(f'[{name}（{market_name}）] 更新日: {update_date}, 基準価額: {price}円, 前日比: {change_price}円（{change_price_rate}％）')
+        print(f'[{name}（{market_name}）] 更新日: {update_date}, 基準価額: {price}円, '
+              f'前日比: {change_price}円（{change_price_rate}％）')
 
-        return update_date, int(price.replace(',', '')), float(change_price.replace(',', '')), float(change_price_rate.
-                                                                                                     replace(',', ''))
+        return update_date, util.str2float(price), util.str2float(change_price), util.str2float(change_price_rate)
+
+
+def update_foreign_now_value(df):
+    count = 0
+    unit_number = 1
+    _, usd_jyp, _, _ = get_foreign_quote('JPY=X')
+    for index, row in df.iterrows():
+        code = row['code']
+        update_date, price, change_price, change_price_rate = get_foreign_quote(code)
+        price = usd_jyp * price
+        change_price = usd_jyp * change_price
+
+        # 現在値
+        df.loc[count, '現在値'] = round(price, 2)
+
+        # 数量
+        number = int(row['数量'])
+
+        # 取得単価
+        unit_price = int(row['取得単価'])
+
+        # 評価額（小数点以下2位で丸め）
+        valuation = calc.calc_valuation(number, unit_number, price)
+        df.loc[count, '評価額'] = round(valuation, 2)
+
+        # 損益
+        profit = calc.calc_profit(number, unit_number, unit_price, valuation)
+        df.loc[count, '損益'] = round(profit, 2)
+
+        # 損益（％）
+        profit_rate = calc.calc_profit_rate(unit_price, price)
+        df.loc[count, '損益（％）'] = round(profit_rate, 2)
+
+        # 前日比
+        df.loc[count, '前日比'] = round(change_price, 2)
+
+        # 前日比（％）.
+        df.loc[count, '前日比（％）'] = round(change_price_rate, 2)
+
+        # 前日比（金額）
+        df.loc[count, '前日比（金額）'] = round(calc.calc_change_price(price, number, unit_number, change_price_rate), 2)
+
+        count += 1
+
+    print(df)
+
+    return df
+
+
+def get_foreign_quote(code):
+    url = 'https://finance.yahoo.com/quote/' + code
+    res = requests.get(url)
+    res.encoding = res.apparent_encoding
+    soup = BeautifulSoup(res.text, 'html.parser')
+    script_tags = soup.select('script')
+
+    json_data = None
+
+    for script_tag in script_tags:
+        if 'root.App.main' in script_tag.text:
+            json_text = script_tag.text.split('root.App.main = ')[1].split(';\n')[0]
+            # print(json_text)
+            json_data = json.loads(json_text)
+            break
+
+    if json_data is not None:
+        quote_summary_store = json_data['context']['dispatcher']['stores']['QuoteSummaryStore']
+        name = quote_summary_store['price']['longName']
+        market_name = quote_summary_store['price']['exchangeName']
+        update_date = quote_summary_store['price']['regularMarketTime']
+        price = quote_summary_store['price']['regularMarketPrice']['fmt']
+        change_price = quote_summary_store['price']['regularMarketChange']['fmt']
+        change_price_rate = quote_summary_store['price']['regularMarketChangePercent']['fmt'].replace('%', '')
+        currency = quote_summary_store['price']['currency']
+        symbol = quote_summary_store['price']['symbol']
+        print(f'[{name}({symbol})（{market_name}）] 更新日: {update_date}, 基準価額: {price}{currency}, '
+              f'前日比: {change_price}{currency}（{change_price_rate}％）')
+
+        return update_date, util.str2float(price), util.str2float(change_price), util.str2float(change_price_rate)

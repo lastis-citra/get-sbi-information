@@ -4,13 +4,13 @@ def calc_unit_price(number1, number2, unit_price1, unit_price2, total_number):
 
 
 # 評価額を算出する
-def calc_valuation(number, price):
-    return number * price / 10000
+def calc_valuation(number, unit_number, price):
+    return number * price / unit_number
 
 
 # 損益を算出する
-def calc_profit(number, unit_price, valuation):
-    return valuation - number * unit_price / 10000
+def calc_profit(number, unit_number, unit_price, valuation):
+    return valuation - number * unit_price / unit_number
 
 
 # 損益率を算出する
@@ -19,8 +19,8 @@ def calc_profit_rate(unit_price, price):
 
 
 # 前日比（金額）を算出する
-def calc_change_price(price, number, change_price_rate):
-    return change_price_rate / (100 + change_price_rate) * number * price / 10000
+def calc_change_price(price, number, unit_number, change_price_rate):
+    return change_price_rate / (100 + change_price_rate) * number * price / unit_number
 
 
 # 総合計を算出する

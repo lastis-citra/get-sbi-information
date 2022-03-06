@@ -8,6 +8,7 @@ from selenium.webdriver.chrome.options import Options
 from bs4 import BeautifulSoup
 import yahoo
 import calc
+import util
 
 
 # 参考: https://hato.yokohama/scraping_sbi_investment/
@@ -93,6 +94,7 @@ def merge_same_code(df):
     delete_row_list = []
     change_price_list = []
     count = 0
+    unit_number = 10000
     old_number = 0
     old_unit_price = 0
     for index, row in df.iterrows():
@@ -112,11 +114,11 @@ def merge_same_code(df):
             df.loc[count, '取得単価'] = int(added_unit_price)
 
             # 評価額（小数点以下2位で丸め）
-            added_valuation = calc.calc_valuation(added_number, now_price)
+            added_valuation = calc.calc_valuation(added_number, unit_number, now_price)
             df.loc[count, '評価額'] = round(added_valuation, 2)
 
             # 損益
-            added_profit = calc.calc_profit(added_number, added_unit_price, added_valuation)
+            added_profit = calc.calc_profit(added_number, unit_number, added_unit_price, added_valuation)
             df.loc[count, '損益'] = round(added_profit, 2)
 
             # 損益（％）
@@ -138,7 +140,7 @@ def merge_same_code(df):
         change_price_ratio = row['前日比（％）']
 
         # 前日比（金額）
-        change_price = calc.calc_change_price(now_price, row['数量'], change_price_ratio)
+        change_price = calc.calc_change_price(now_price, row['数量'], unit_number, change_price_ratio)
         change_price_list.append(round(change_price, 2))
 
     df['前日比（金額）'] = change_price_list
@@ -204,11 +206,93 @@ def get_ja_data(driver, data_list):
     # 総合計を算出する
     calc.calc_total(df_ja_result)
 
-    # # 最新の基準価額に更新する
-    # df_ja_result = yahoo.update_now_value(df_ja_result)
-    #
-    # # 総合計を算出する
-    # calc.calc_total(df_ja_result)
+    # 最新の基準価額に更新する
+    df_ja_result = yahoo.update_now_value(df_ja_result)
+
+    # 総合計を算出する
+    calc.calc_total(df_ja_result)
+
+    return df_ja_result
+
+
+def format_foreign_data(df, data_list):
+    def get_price(value):
+        return value.split(' ')[1].replace('円', '')
+
+    name_list = []
+    number_list = []
+    unit_price_list = []
+    price_list = []
+    profit_list = []
+    profit_rate_list = []
+    valuation_list = []
+    code_list = []
+    count = 0
+    for index, row in df.iterrows():
+        # dfの最後の1行は合計なので飛ばす
+        if count < len(df) - 1:
+            # ファンド名
+            name_pre = row['銘柄コード･市場']
+            name = name_pre.replace(' ' + name_pre.split(' ')[-1], '')
+            name_list.append(name)
+
+            # code
+            code = name.split(' ')[-1]
+            code_list.append(code)
+
+            # 数量
+            number_pre = row['保有数量(売却注文中)']
+            number = number_pre.split('(')[0]
+            number_list.append(util.str2int(number))
+
+            # 取得単価
+            unit_price_pre = row['取得単価円換算額']
+            unit_price = get_price(unit_price_pre)
+            unit_price_list.append(util.str2int(unit_price))
+
+            # 取得金額
+            unit_valuation_pre = row['取得金額円換算額']
+            unit_valuation = get_price(unit_valuation_pre)
+
+            # 現在値
+            price_pre = row['現在値円換算額']
+            price = get_price(price_pre)
+            price_list.append(util.str2int(price))
+
+            # 損益
+            profit_pre = row['外貨建評価損益円換算評価損益 金額 ％']
+            profit = get_price(profit_pre)
+            profit_list.append(util.str2int(profit))
+
+            # 評価額
+            valuation_pre = row['外貨建評価額円換算評価額']
+            valuation = get_price(valuation_pre)
+            valuation_list.append(util.str2float(valuation))
+
+            # 損益（％）
+            profit_rate = (int(valuation.replace(',', '')) / int(unit_valuation.replace(',', '')) - 1) * 100
+            profit_rate_list.append(round(profit_rate, 2))
+
+        count += 1
+
+    df_foreign_result = init_df(data_list)
+    df_foreign_result['ファンド名'] = name_list
+    df_foreign_result['数量'] = number_list
+    df_foreign_result['取得単価'] = unit_price_list
+    df_foreign_result['現在値'] = price_list
+    df_foreign_result['損益'] = profit_list
+    df_foreign_result['損益（％）'] = profit_rate_list
+    df_foreign_result['評価額'] = valuation_list
+    df_foreign_result['code'] = code_list
+    print(df_foreign_result)
+
+    # 最新の基準価額に更新する
+    df_foreign_result = yahoo.update_foreign_now_value(df_foreign_result)
+
+    # 総合計を算出する
+    calc.calc_total(df_foreign_result)
+
+    return df_foreign_result
 
 
 def get_foreign_data(driver, data_list):
@@ -249,71 +333,10 @@ def get_foreign_data(driver, data_list):
     # 株式
     table_tag = soup.select_one('#secStockListTable0')
     df = pd.read_html(str(table_tag), header=0)[0]
-    print(df)
+    # print(df)
+    df_foreign_result = format_foreign_data(df, data_list)
 
-    def get_price(value):
-        return value.split(' ')[1].replace('円', '')
-
-    name_list = []
-    number_list = []
-    unit_price_list = []
-    price_list = []
-    profit_list = []
-    profit_rate_list = []
-    valuation_list = []
-    count = 0
-    for index, row in df.iterrows():
-        # dfの最後の1行は合計なので飛ばす
-        if count < len(df) - 1:
-            # ファンド名
-            name_pre = row['銘柄コード･市場']
-            name = name_pre.replace(' ' + name_pre.split(' ')[-1], '')
-            name_list.append(name)
-
-            # 数量
-            number_pre = row['保有数量(売却注文中)']
-            number = number_pre.split('(')[0]
-            number_list.append(number)
-
-            # 取得単価
-            unit_price_pre = row['取得単価円換算額']
-            unit_price = get_price(unit_price_pre)
-            unit_price_list.append(unit_price)
-
-            # 取得金額
-            unit_valuation_pre = row['取得金額円換算額']
-            unit_valuation = get_price(unit_valuation_pre)
-
-            # 現在値
-            price_pre = row['現在値円換算額']
-            price = get_price(price_pre)
-            price_list.append(price)
-
-            # 損益
-            profit_pre = row['外貨建評価損益円換算評価損益 金額 ％']
-            profit = get_price(profit_pre)
-            profit_list.append(profit)
-
-            # 評価額
-            valuation_pre = row['外貨建評価額円換算評価額']
-            valuation = get_price(valuation_pre)
-            valuation_list.append(valuation)
-
-            # 損益（％）
-            profit_rate = (int(valuation.replace(',', '')) / int(unit_valuation.replace(',', '')) - 1) * 100
-            profit_rate_list.append(round(profit_rate, 2))
-
-        count += 1
-
-    df_foreign_result = init_df(data_list)
-    df_foreign_result['ファンド名'] = name_list
-    df_foreign_result['数量'] = number_list
-    df_foreign_result['取得単価'] = unit_price_list
-    df_foreign_result['現在値'] = price_list
-    df_foreign_result['損益'] = profit_list
-    df_foreign_result['損益（％）'] = profit_rate_list
-    df_foreign_result['評価額'] = valuation_list
-    print(df_foreign_result)
+    return df_foreign_result
 
 
 def main():
@@ -340,8 +363,12 @@ def main():
         driver = connect_sbi(user_id, user_password, driver_path)
 
     data_list = ['ファンド名', '数量', '取得単価', '現在値', '前日比', '前日比（％）', '損益', '損益（％）', '評価額']
-    get_ja_data(driver, data_list)
-    get_foreign_data(driver, data_list)
+    df_ja_result = get_ja_data(driver, data_list)
+    df_foreign_result = get_foreign_data(driver, data_list)
+    df_all = pd.concat([df_ja_result, df_foreign_result])
+
+    # 総合計を算出する
+    calc.calc_total(df_all)
 
     if not debug_bool:
         time.sleep(10000)
