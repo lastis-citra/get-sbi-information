@@ -7,6 +7,7 @@ from selenium.webdriver.chrome import service as cs
 from selenium.webdriver.chrome.options import Options
 from bs4 import BeautifulSoup
 import yahoo
+import calc
 
 
 # 参考: https://hato.yokohama/scraping_sbi_investment/
@@ -90,14 +91,14 @@ def merge_same_code(df):
     # print(duplicated_bool)
 
     delete_row_list = []
-    before_ratio_value_list = []
+    change_price_list = []
     count = 0
     old_number = 0
     old_unit_price = 0
     for index, row in df.iterrows():
         if duplicated_bool[count]:
             # 現在値
-            now_value = row['現在値']
+            now_price = row['現在値']
 
             # 数量
             number = int(row['数量'])
@@ -107,19 +108,19 @@ def merge_same_code(df):
 
             # 取得単価
             unit_price = int(row['取得単価'])
-            added_unit_price = (old_number * old_unit_price + number * unit_price) / added_number
+            added_unit_price = calc.calc_unit_price(old_number, number, old_unit_price, unit_price, added_number)
             df.loc[count, '取得単価'] = int(added_unit_price)
 
             # 評価額（小数点以下2位で丸め）
-            added_valuation = added_number * now_value / 10000
+            added_valuation = calc.calc_valuation(added_number, now_price)
             df.loc[count, '評価額'] = round(added_valuation, 2)
 
             # 損益
-            added_profit = added_valuation - added_number * added_unit_price / 10000
+            added_profit = calc.calc_profit(added_number, added_unit_price, added_valuation)
             df.loc[count, '損益'] = round(added_profit, 2)
 
             # 損益（％）
-            added_profit_rate = now_value / added_unit_price * 100 - 100
+            added_profit_rate = calc.calc_profit_rate(added_unit_price, now_price)
             df.loc[count, '損益（％）'] = round(added_profit_rate, 2)
 
             delete_row_list.append(count - 1)
@@ -132,44 +133,19 @@ def merge_same_code(df):
     df = df.drop(delete_row_list)
     for index, row in df.iterrows():
         # 現在値
-        now_value = row['現在値']
+        now_price = row['現在値']
         # 前日比（％）
-        before_ratio = row['前日比（％）']
+        change_price_ratio = row['前日比（％）']
 
         # 前日比（金額）
-        before_ratio_value = before_ratio / (100 + before_ratio) * row['数量'] * now_value / 10000
+        change_price = calc.calc_change_price(now_price, row['数量'], change_price_ratio)
+        change_price_list.append(round(change_price, 2))
 
-        before_ratio_value_list.append(round(before_ratio_value, 2))
-
-    df['前日比（金額）'] = before_ratio_value_list
+    df['前日比（金額）'] = change_price_list
     df = df.reset_index().drop(columns=['level_0', 'index', 'カテゴリー'])
     print(df)
 
     return df
-
-
-# 総合計を算出する
-def calc_total(df):
-    print('総合計')
-    # 評価額総合計
-    total_valuation = df['評価額'].sum()
-    print(f'評価額: {"{:,.0f}".format(total_valuation)}円')
-
-    # 損益総合計
-    total_profit = df['損益'].sum()
-    print(f'含み損益: {"{:,.0f}".format(total_profit)}円')
-
-    # 損益（％）総合計
-    total_profit_rate = total_profit / (total_valuation - total_profit) * 100
-    print(f'含み損益: {round(total_profit_rate, 2)}％')
-
-    # 前日比（金額）総合計
-    total_before_ratio_value = df['前日比（金額）'].sum()
-    print(f'前日比: {"{:,.0f}".format(total_before_ratio_value)}円')
-
-    # 前日比（％）総合計
-    total_before_ratio = total_before_ratio_value / (total_valuation - total_before_ratio_value) * 100
-    print(f'前日比: {round(total_before_ratio, 2)}％')
 
 
 # ポートフォリオページから保有中の株・投資信託情報を取得
@@ -227,13 +203,13 @@ def get_ja_data(driver):
     df_ja_result = merge_same_code(df_ja_result)
 
     # 総合計を算出する
-    calc_total(df_ja_result)
+    calc.calc_total(df_ja_result)
 
     # 最新の基準価額に更新する
     df_ja_result = yahoo.update_now_value(df_ja_result)
 
     # 総合計を算出する
-    calc_total(df_ja_result)
+    calc.calc_total(df_ja_result)
 
 
 def main():

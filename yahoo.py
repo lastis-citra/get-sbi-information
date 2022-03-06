@@ -1,7 +1,7 @@
 import requests
 from bs4 import BeautifulSoup
 import json
-import pandas as pd
+import calc
 
 
 def update_now_value(df):
@@ -21,15 +21,15 @@ def update_now_value(df):
         unit_price = int(row['取得単価'])
 
         # 評価額（小数点以下2位で丸め）
-        valuation = number * price / 10000
+        valuation = calc.calc_valuation(number, price)
         df.loc[count, '評価額'] = round(valuation, 2)
 
         # 損益
-        profit = valuation - number * unit_price / 10000
+        profit = calc.calc_profit(number, unit_price, valuation)
         df.loc[count, '損益'] = round(profit, 2)
 
         # 損益（％）
-        profit_rate = price / unit_price * 100 - 100
+        profit_rate = calc.calc_profit_rate(unit_price, price)
         df.loc[count, '損益（％）'] = round(profit_rate, 2)
 
         # 前日比
@@ -39,7 +39,7 @@ def update_now_value(df):
         df.loc[count, '前日比（％）'] = round(change_price_rate, 2)
 
         # 前日比（金額）
-        df.loc[count, '前日比（金額）'] = round(change_price_rate / (100 + change_price_rate) * number * price / 10000, 2)
+        df.loc[count, '前日比（金額）'] = round(calc.calc_change_price(price, number, change_price_rate), 2)
 
         count += 1
 
