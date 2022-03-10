@@ -11,6 +11,7 @@ from bs4 import BeautifulSoup
 import yahoo
 import calc
 import util
+import datetime as dt
 
 
 # 参考: https://hato.yokohama/scraping_sbi_investment/
@@ -370,9 +371,10 @@ def write_log(df):
 
 def write_total(total_valuation, total_profit, total_profit_rate, total_before_ratio_value, total_before_ratio):
     path = f'./log/total.csv'
+    now_date = dt.date.today().strftime('%Y/%m/%d')
     # Windows向けの変換
-    header = '評価額,含み損益,含み損益（％）,前日比,前日比（％）'.encode('cp932', "ignore").decode('cp932')
-    data = f'total_valuation,total_profit,total_profit_rate,total_before_ratio_value,total_before_ratio'
+    header = '取得日,評価額,含み損益,含み損益（％）,前日比,前日比（％）'.encode('cp932', "ignore").decode('cp932')
+    data = f'now_date,total_valuation,total_profit,total_profit_rate,total_before_ratio_value,total_before_ratio'
 
     # ファイルが存在しない場合はヘッダを出力
     if not os.path.isfile(path):
@@ -380,7 +382,6 @@ def write_total(total_valuation, total_profit, total_profit_rate, total_before_r
             f.write(header)
     with open(path, mode='w') as f:
         f.write(data)
-
 
 
 def main():
