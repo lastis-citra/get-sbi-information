@@ -5,6 +5,8 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome import service as cs
 from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 from bs4 import BeautifulSoup
 import yahoo
 import calc
@@ -16,8 +18,11 @@ def connect_sbi(user_id, user_password, driver_path):
     options = Options()
     service = cs.Service(executable_path=driver_path)
     # ヘッドレスモード(chromeを表示させないモード)
-    # options.add_argument('--headless')
+    options.add_argument('--headless')
     driver = webdriver.Chrome(options=options, service=service)
+    # 一度設定すると find_element 等の処理時に、
+    # 要素が見つかるまで指定時間繰り返し探索するようになります。
+    driver.implicitly_wait(10)
 
     # SBI証券のトップ画面を開く
     driver.get('https://www.sbisec.co.jp/ETGate')
@@ -156,10 +161,12 @@ def get_ja_data(driver, data_list):
 
     if driver is not None:
         # 遷移するまで待つ
-        time.sleep(4)
+        # time.sleep(4)
 
         # ポートフォリオの画面に遷移
         driver.find_element(by=By.XPATH, value='//*[@id="link02M"]/ul/li[1]/a/img').click()
+        # ID指定したページ上の要素が読み込まれるまで待機（10秒でタイムアウト判定）
+        WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.ID, 'FOOTER02')))
 
         # 文字コードをUTF-8に変換
         html = driver.page_source.encode('utf-8')
@@ -300,22 +307,25 @@ def get_foreign_data(driver, data_list):
 
     if driver is not None:
         # 遷移するまで待つ
-        time.sleep(4)
+        # time.sleep(4)
 
         # ホーム画面に遷移
         driver.find_element(by=By.XPATH, value='//*[@id="navi01P"]/ul/li[1]/a/img').click()
 
         # 遷移するまで待つ
-        time.sleep(4)
+        # time.sleep(4)
 
         # 外国株式のページに遷移
-        driver.find_element(by=By.XPATH, value='//*[@id="SUBAREA01"]/div[4]/div/div/ul/li[5]/a').click()
+        # driver.find_element(by=By.XPATH, value='//*[@id="SUBAREA01"]/div[4]/div/div/ul/li[5]/a').click()
+        # https://office54.net/python/scraping/selenium-click-exception
+        element = driver.find_element(by=By.XPATH, value='//*[@id="SUBAREA01"]/div[4]/div/div/ul/li[5]/a')
+        driver.execute_script("arguments[0].click();", element)
         # 別ウインドウで開かれているため，ウインドウを切り替える
         handle_array = driver.window_handles
         driver.switch_to.window(handle_array[1])
 
         # 遷移するまで待つ
-        time.sleep(4)
+        # time.sleep(4)
 
         # 保有証券のページへ移動
         driver.get('https://global.sbisec.co.jp/Fpts/czk/secCashBalance/moveSecCashBalance')
