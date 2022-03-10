@@ -3,11 +3,13 @@ from bs4 import BeautifulSoup
 import json
 import calc
 import util
+import datetime as dt
 
 
 def update_now_value(df):
     count = 0
     unit_number = 10000
+    update_date_list = []
     for index, row in df.iterrows():
         # なぜかcodeの先頭に余分な2が付いているので削除する
         code = row['code'][1:]
@@ -43,8 +45,19 @@ def update_now_value(df):
         # 前日比（金額）
         df.loc[count, '前日比（金額）'] = round(calc.calc_change_price(price, number, unit_number, change_price_rate), 2)
 
+        # 更新日時（03/10という形式から変換）
+        now_year = dt.date.today().strftime('%Y')
+        update_date_year_added = f'{now_year}/{update_date}'
+        # もし2020/12/31のデータを2021/1/1に取得すると，2021/12/31となってしまうため，1年引く処理を入れる
+        if dt.datetime.strptime(update_date_year_added, '%Y/%m/%d').date() > dt.date.today():
+            now_year -= 1
+            update_date_year_added = f'{now_year}/{update_date}'
+        update_date_ja = dt.datetime.strptime(update_date_year_added, '%Y/%m/%d')
+        update_date_list.append(update_date_ja.strftime('%Y/%m/%d %H:%M:%S'))
+
         count += 1
 
+    df['update'] = update_date_list
     print(df)
 
     return df
@@ -82,6 +95,7 @@ def get_ja_quote(code):
 def update_foreign_now_value(df):
     count = 0
     unit_number = 1
+    update_date_list = []
     _, usd_jyp, _, _ = get_foreign_quote('JPY=X')
     for index, row in df.iterrows():
         code = row['code']
@@ -119,8 +133,13 @@ def update_foreign_now_value(df):
         # 前日比（金額）
         df.loc[count, '前日比（金額）'] = round(calc.calc_change_price(price, number, unit_number, change_price_rate), 2)
 
+        # 更新日時
+        update_date_ja = dt.datetime.fromtimestamp(update_date, dt.timezone(dt.timedelta(hours=9)))
+        update_date_list.append(update_date_ja.strftime('%Y/%m/%d %H:%M:%S'))
+
         count += 1
 
+    df['update'] = update_date_list
     print(df)
 
     return df
