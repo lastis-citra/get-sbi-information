@@ -386,7 +386,7 @@ def write_total(total_results):
     if not os.path.isfile(path):
         with open(path, mode='w') as f:
             f.write(header)
-    with open(path, mode='w') as f:
+    with open(path, mode='a') as f:
         f.write(data)
 
 
