@@ -362,9 +362,9 @@ def write_log(df):
 
             # ファイルが存在しない場合はヘッダを出力
             if not os.path.isfile(path):
-                df[count:count+1].to_csv(path, mode='w', header=True)
+                df[count:count+1].to_csv(path, mode='w', header=True, encoding="shift-jis")
             else:
-                df[count:count+1].to_csv(path, mode='a', header=False)
+                df[count:count+1].to_csv(path, mode='a', header=False, encoding="shift-jis")
         count += 1
 
 
