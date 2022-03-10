@@ -363,18 +363,24 @@ def write_log(df):
 
             # ファイルが存在しない場合はヘッダを出力
             if not os.path.isfile(path):
-                df[count:count+1].to_csv(path, mode='w', header=True, encoding="shift-jis")
+                df[count:count+1].to_csv(path, mode='w', header=True, encoding='utf_8_sig')
             else:
-                df[count:count+1].to_csv(path, mode='a', header=False, encoding="shift-jis")
+                df[count:count+1].to_csv(path, mode='a', header=False, encoding='utf_8_sig')
         count += 1
 
 
-def write_total(total_valuation, total_profit, total_profit_rate, total_before_ratio_value, total_before_ratio):
+def write_total(total_results):
     path = f'./log/total.csv'
     now_date = dt.date.today().strftime('%Y/%m/%d')
+    valuation = total_results[0]
+    profit = total_results[1]
+    profit_rate = total_results[2]
+    before_ratio_value = total_results[3]
+    before_ratio = total_results[4]
+
     # Windows向けの変換
-    header = '取得日,評価額,含み損益,含み損益（％）,前日比,前日比（％）'.encode('cp932', "ignore").decode('cp932')
-    data = f'now_date,total_valuation,total_profit,total_profit_rate,total_before_ratio_value,total_before_ratio'
+    header = '取得日,評価額,含み損益,含み損益（％）,前日比,前日比（％）'
+    data = f'{now_date},{valuation},{profit},{profit_rate},{before_ratio_value},{before_ratio}'
 
     # ファイルが存在しない場合はヘッダを出力
     if not os.path.isfile(path):
