@@ -349,6 +349,25 @@ def get_foreign_data(driver, data_list):
     return df_foreign_result
 
 
+def write_log(df):
+    header = None
+    count = 0
+    for index, row in df.iterrows():
+        # dfの先頭の1行はヘッダ
+        if count == 0:
+            header = row
+        else:
+            code = row['code']
+            path = f'./log/{code}.csv'
+
+            # ファイルが存在しない場合はヘッダを出力
+            if not os.path.isfile(path):
+                df[count:count+1].to_csv(path, mode='w', header=True)
+            else:
+                df[count:count+1].to_csv(path, mode='a', header=False)
+        count += 1
+
+
 def main():
     pd.set_option('display.max_rows', None)
     pd.set_option('display.max_columns', None)
@@ -376,6 +395,8 @@ def main():
     df_ja_result = get_ja_data(driver, data_list)
     df_foreign_result = get_foreign_data(driver, data_list)
     df_all = pd.concat([df_ja_result, df_foreign_result])
+
+    write_log(df_all)
 
     # 総合計を算出する
     calc.calc_total(df_all)
