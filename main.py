@@ -368,6 +368,21 @@ def write_log(df):
         count += 1
 
 
+def write_total(total_valuation, total_profit, total_profit_rate, total_before_ratio_value, total_before_ratio):
+    path = f'./log/total.csv'
+    # Windows向けの変換
+    header = '評価額,含み損益,含み損益（％）,前日比,前日比（％）'.encode('cp932', "ignore").decode('cp932')
+    data = f'total_valuation,total_profit,total_profit_rate,total_before_ratio_value,total_before_ratio'
+
+    # ファイルが存在しない場合はヘッダを出力
+    if not os.path.isfile(path):
+        with open(path, mode='w') as f:
+            f.write(header)
+    with open(path, mode='w') as f:
+        f.write(data)
+
+
+
 def main():
     pd.set_option('display.max_rows', None)
     pd.set_option('display.max_columns', None)
@@ -399,7 +414,7 @@ def main():
     write_log(df_all)
 
     # 総合計を算出する
-    calc.calc_total(df_all)
+    write_total(calc.calc_total(df_all))
 
     if not debug_bool:
         time.sleep(10000)

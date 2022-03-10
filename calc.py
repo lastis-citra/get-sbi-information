@@ -45,3 +45,5 @@ def calc_total(df):
     # 前日比（％）総合計
     total_before_ratio = total_before_ratio_value / (total_valuation - total_before_ratio_value) * 100
     print(f'前日比: {round(total_before_ratio, 2)}％')
+
+    return total_valuation, total_profit, total_profit_rate, total_before_ratio_value, total_before_ratio
