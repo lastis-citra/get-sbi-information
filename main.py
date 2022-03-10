@@ -293,12 +293,6 @@ def format_foreign_data(df, data_list):
     df_foreign_result['code'] = code_list
     print(df_foreign_result)
 
-    # 最新の基準価額に更新する
-    df_foreign_result = yahoo.update_foreign_now_value(df_foreign_result)
-
-    # 総合計を算出する
-    calc.calc_total(df_foreign_result)
-
     return df_foreign_result
 
 
@@ -345,6 +339,12 @@ def get_foreign_data(driver, data_list):
     df = pd.read_html(str(table_tag), header=0)[0]
     # print(df)
     df_foreign_result = format_foreign_data(df, data_list)
+
+    # 最新の基準価額に更新する
+    df_foreign_result = yahoo.update_foreign_now_value(df_foreign_result)
+
+    # 総合計を算出する
+    calc.calc_total(df_foreign_result)
 
     return df_foreign_result
 
