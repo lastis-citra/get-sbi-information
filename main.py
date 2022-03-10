@@ -379,8 +379,8 @@ def write_total(total_results):
     before_ratio = total_results[4]
 
     # Windows向けの変換
-    header = '取得日,評価額,含み損益,含み損益（％）,前日比,前日比（％）'
-    data = f'{now_date},{valuation},{profit},{profit_rate},{before_ratio_value},{before_ratio}'
+    header = '取得日,評価額,含み損益,含み損益（％）,前日比,前日比（％）\n'
+    data = f'{now_date},{valuation},{profit},{profit_rate},{before_ratio_value},{before_ratio}\n'
 
     # ファイルが存在しない場合はヘッダを出力
     if not os.path.isfile(path):
