@@ -134,6 +134,9 @@ def merge_same_code(df):
 
             # 重複しているものを削除するためにリストに追加しておく
             delete_row_list.append(count - 1)
+        else:
+            # 重複しない場合に損益の+文字が残ってエラーになってしまうため，一旦floatに変換する
+            df.loc[count, '損益'] = float(df.loc[count, '損益'])
 
         # print(row[2])
         old_number = int(row['数量'])
