@@ -104,6 +104,7 @@ def merge_same_code(df):
     old_number = 0
     old_unit_price = 0
     for index, row in df.iterrows():
+        # 重複している場合，1つ手前のものとマージする
         if duplicated_bool[count]:
             # 現在値
             now_price = row['現在値']
@@ -131,6 +132,7 @@ def merge_same_code(df):
             added_profit_rate = calc.calc_profit_rate(added_unit_price, now_price)
             df.loc[count, '損益（％）'] = round(added_profit_rate, 2)
 
+            # 重複しているものを削除するためにリストに追加しておく
             delete_row_list.append(count - 1)
 
         # print(row[2])
@@ -138,7 +140,9 @@ def merge_same_code(df):
         old_unit_price = int(row['取得単価'])
         count += 1
 
+    # 重複しているものをまとめて削除
     df = df.drop(delete_row_list)
+    # 前日比を計算
     for index, row in df.iterrows():
         # 現在値
         now_price = row['現在値']
