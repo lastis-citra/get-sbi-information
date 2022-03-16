@@ -158,11 +158,14 @@ def get_foreign_quote(code):
         if 'root.App.main' in script_tag.text:
             json_text = script_tag.text.split('root.App.main = ')[1].split(';\n')[0]
             # print(json_text)
+            # with open(f'./log/{code}.json', mode='w') as f:
+            #     f.write(json_text.encode('cp932', "ignore").decode('cp932'))
             json_data = json.loads(json_text)
             break
 
     if json_data is not None:
         quote_summary_store = json_data['context']['dispatcher']['stores']['QuoteSummaryStore']
+        # print(json.dumps(quote_summary_store['price']))
         name = quote_summary_store['price']['longName']
         market_name = quote_summary_store['price']['exchangeName']
         update_date = quote_summary_store['price']['regularMarketTime']
@@ -171,7 +174,10 @@ def get_foreign_quote(code):
         change_price_rate = quote_summary_store['price']['regularMarketChangePercent']['fmt'].replace('%', '')
         currency = quote_summary_store['price']['currency']
         symbol = quote_summary_store['price']['symbol']
-        print(f'[{name}({symbol})（{market_name}）] 更新日: {update_date}, 基準価額: {price}{currency}, '
+
+        update_date_ja = dt.datetime.fromtimestamp(update_date, dt.timezone(dt.timedelta(hours=9)))
+        update_date_ja = update_date_ja.strftime('%Y/%m/%d %H:%M:%S')
+        print(f'[{name}({symbol})（{market_name}）] 更新日: {update_date_ja}, 基準価額: {price}{currency}, '
               f'前日比: {change_price}{currency}（{change_price_rate}％）')
 
         return update_date, util.str2float(price), util.str2float(change_price), util.str2float(change_price_rate)
