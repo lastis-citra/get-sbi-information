@@ -19,7 +19,7 @@ def connect_sbi(user_id, user_password, driver_path):
     options = Options()
     service = cs.Service(executable_path=driver_path)
     # ヘッドレスモード(chromeを表示させないモード)
-    options.add_argument('--headless')
+    # options.add_argument('--headless')
     driver = webdriver.Chrome(options=options, service=service)
     # 一度設定すると find_element 等の処理時に、
     # 要素が見つかるまで指定時間繰り返し探索するようになります。
@@ -232,7 +232,7 @@ def get_ja_data(driver, data_list):
 
 def format_foreign_data(df, data_list):
     def get_price(value):
-        return value.split(' ')[1].replace('円', '')
+        return value.split('  ')[1].replace(' 円', '')
 
     name_list = []
     number_list = []
@@ -247,40 +247,40 @@ def format_foreign_data(df, data_list):
         # dfの最後の1行は合計なので飛ばす
         if count < len(df) - 1:
             # ファンド名
-            name_pre = row['銘柄コード･市場']
+            name_pre = row['銘柄']
             name = name_pre.replace(' ' + name_pre.split(' ')[-1], '')
             name_list.append(name)
 
             # code
-            code = name.split(' ')[-1]
+            code = name.split(' ')[-4]
             code_list.append(code)
 
             # 数量
-            number_pre = row['保有数量(売却注文中)']
-            number = number_pre.split('(')[0]
+            number_pre = row['保有数量  (売却注文中)']
+            number = number_pre.split('  (')[0]
             number_list.append(util.str2int(number))
 
             # 取得単価
-            unit_price_pre = row['取得単価円換算額']
+            unit_price_pre = row['取得単価  円換算額']
             unit_price = get_price(unit_price_pre)
             unit_price_list.append(util.str2int(unit_price))
 
             # 取得金額
-            unit_valuation_pre = row['取得金額円換算額']
+            unit_valuation_pre = row['取得金額  円換算額']
             unit_valuation = get_price(unit_valuation_pre)
 
             # 現在値
-            price_pre = row['現在値円換算額']
+            price_pre = row['現在値  円換算額']
             price = get_price(price_pre)
             price_list.append(util.str2int(price))
 
             # 損益
-            profit_pre = row['外貨建評価損益円換算評価損益 金額 ％']
+            profit_pre = row['外貨建評価損益  円換算評価損益  金額  %']
             profit = get_price(profit_pre)
             profit_list.append(util.str2int(profit))
 
             # 評価額
-            valuation_pre = row['外貨建評価額円換算評価額']
+            valuation_pre = row['外貨建評価額  円換算評価額']
             valuation = get_price(valuation_pre)
             valuation_list.append(util.str2float(valuation))
 
@@ -330,7 +330,10 @@ def get_foreign_data(driver, data_list):
         # time.sleep(4)
 
         # 保有証券のページへ移動
-        driver.get('https://global.sbisec.co.jp/Fpts/czk/secCashBalance/moveSecCashBalance')
+        driver.get('https://global.sbisec.co.jp/account/assets?country=us')
+
+        # ID指定したページ上の要素が読み込まれるまで待機（10秒でタイムアウト判定）
+        WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.CLASS_NAME, 'grid-table')))
 
         # 文字コードをUTF-8に変換
         html = driver.page_source.encode('utf-8')
@@ -343,8 +346,47 @@ def get_foreign_data(driver, data_list):
         soup = BeautifulSoup(html, 'html.parser')
 
     # 株式
-    table_tag = soup.select_one('#secStockListTable0')
-    df = pd.read_html(str(table_tag), header=0)[0]
+    table_tag = soup.select_one('div[class="grid-table mb-x-2 css-1obf3bp"]').prettify()
+
+    # divでtableが表現されているため，tableに無理やり変換してpandasで読み込む
+    table_string = str(table_tag)
+    table_list = table_string.splitlines()
+    result_list = []
+    flag_th = False
+    count_th = 0
+    count_td = 0
+    for line in table_list:
+        if line.startswith('<div'):
+            result_list.append(line.replace('div', 'table'))
+            result_list.append('<tr>')
+        elif line.startswith('</div'):
+            result_list.append('</tr>')
+            result_list.append(line.replace('div', 'table'))
+        elif line.startswith(' <div'):
+            if 'table-head' in line:
+                count_th += 1
+                result_list.append(line.replace('div', 'th'))
+                flag_th = True
+            else:
+                if count_td % 8 == 0:
+                    result_list.append('<tr>')
+                count_td += 1
+                result_list.append(line.replace('div', 'td'))
+        elif line.startswith(' </div'):
+            if flag_th:
+                result_list.append(line.replace('div', 'th'))
+                flag_th = False
+                if count_th == 8:
+                    result_list.append('</tr>')
+            else:
+                result_list.append(line.replace('div', 'td'))
+                if count_td % 8 == 0:
+                    result_list.append('</tr>')
+        else:
+            result_list.append(line)
+    table_string = '\r\n'.join(result_list)
+    # print(table_string)
+    df = pd.read_html(table_string, header=0)[0]
     # print(df)
     df_foreign_result = format_foreign_data(df, data_list)
 
