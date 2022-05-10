@@ -248,11 +248,13 @@ def format_foreign_data(df, data_list):
         if count < len(df) - 1:
             # ファンド名
             name_pre = row['銘柄']
-            name = name_pre.replace(' ' + name_pre.split(' ')[-1], '')
+            print(name_pre)
+            name = name_pre.replace('  ' + name_pre.split('  ')[-1], '')
+            print(name)
             name_list.append(name)
 
             # code
-            code = name.split(' ')[-4]
+            code = name.split(' ')[-1]
             code_list.append(code)
 
             # 数量
@@ -467,12 +469,11 @@ def main():
     df_foreign_result = get_foreign_data(driver, data_list)
     df_all = pd.concat([df_ja_result, df_foreign_result])
 
-    write_log(df_all)
-
-    # 総合計を算出する
-    write_total(calc.calc_total(df_all))
-
     if not debug_bool:
+        write_log(df_all)
+        # 総合計を算出する
+        write_total(calc.calc_total(df_all))
+    else:
         time.sleep(10000)
 
 
