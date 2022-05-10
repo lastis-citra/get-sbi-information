@@ -19,7 +19,7 @@ def connect_sbi(user_id, user_password, driver_path):
     options = Options()
     service = cs.Service(executable_path=driver_path)
     # ヘッドレスモード(chromeを表示させないモード)
-    # options.add_argument('--headless')
+    options.add_argument('--headless')
     driver = webdriver.Chrome(options=options, service=service)
     # 一度設定すると find_element 等の処理時に、
     # 要素が見つかるまで指定時間繰り返し探索するようになります。
