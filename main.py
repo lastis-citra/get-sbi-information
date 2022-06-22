@@ -19,7 +19,7 @@ def connect_sbi(user_id, user_password, driver_path):
     options = Options()
     service = cs.Service(executable_path=driver_path)
     # ヘッドレスモード(chromeを表示させないモード)
-    options.add_argument('--headless')
+    # options.add_argument('--headless')
     driver = webdriver.Chrome(options=options, service=service)
     # 一度設定すると find_element 等の処理時に、
     # 要素が見つかるまで指定時間繰り返し探索するようになります。
@@ -164,7 +164,7 @@ def merge_same_code(df):
 
 
 # ポートフォリオページから保有中の株・投資信託情報を取得
-def get_ja_data(driver, data_list):
+def get_ja_data(driver, data_list, debug_bool):
     portfolio_path = './portfolio.html'
 
     if driver is not None:
@@ -222,7 +222,8 @@ def get_ja_data(driver, data_list):
     calc.calc_total(df_ja_result)
 
     # 最新の基準価額に更新する
-    df_ja_result = yahoo.update_now_value(df_ja_result)
+    if not debug_bool:
+        df_ja_result = yahoo.update_now_value(df_ja_result)
 
     # 総合計を算出する
     calc.calc_total(df_ja_result)
@@ -335,7 +336,7 @@ def get_foreign_data(driver, data_list):
         driver.get('https://global.sbisec.co.jp/account/assets?country=us')
 
         # ID指定したページ上の要素が読み込まれるまで待機（10秒でタイムアウト判定）
-        WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.CLASS_NAME, 'grid-table')))
+        WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.CLASS_NAME, 'table-light')))
 
         # 文字コードをUTF-8に変換
         html = driver.page_source.encode('utf-8')
@@ -348,23 +349,26 @@ def get_foreign_data(driver, data_list):
         soup = BeautifulSoup(html, 'html.parser')
 
     # 株式
-    table_tag = soup.select_one('div[class="grid-table mb-x-2 css-1obf3bp"]').prettify()
+    table_tag = soup.select_one('ul[class="grid-table table-light mb-x-2"]').prettify()
 
     # divでtableが表現されているため，tableに無理やり変換してpandasで読み込む
     table_string = str(table_tag)
+    # print(table_string)
     table_list = table_string.splitlines()
     result_list = []
     flag_th = False
     count_th = 0
     count_td = 0
     for line in table_list:
-        if line.startswith('<div'):
-            result_list.append(line.replace('div', 'table'))
+        if line.startswith(' <li') or line.startswith(' </li'):
+            continue
+        if line.startswith('<ul'):
+            result_list.append(line.replace('ul', 'table'))
             result_list.append('<tr>')
-        elif line.startswith('</div'):
+        elif line.startswith('</ul'):
             result_list.append('</tr>')
-            result_list.append(line.replace('div', 'table'))
-        elif line.startswith(' <div'):
+            result_list.append(line.replace('ul', 'table'))
+        elif line.startswith('  <div'):
             if 'table-head' in line:
                 count_th += 1
                 result_list.append(line.replace('div', 'th'))
@@ -374,7 +378,7 @@ def get_foreign_data(driver, data_list):
                     result_list.append('<tr>')
                 count_td += 1
                 result_list.append(line.replace('div', 'td'))
-        elif line.startswith(' </div'):
+        elif line.startswith('  </div'):
             if flag_th:
                 result_list.append(line.replace('div', 'th'))
                 flag_th = False
@@ -465,7 +469,7 @@ def main():
         driver = connect_sbi(user_id, user_password, driver_path)
 
     data_list = ['ファンド名', '数量', '取得単価', '現在値', '前日比', '前日比（％）', '損益', '損益（％）', '評価額']
-    df_ja_result = get_ja_data(driver, data_list)
+    df_ja_result = get_ja_data(driver, data_list, debug_bool)
     df_foreign_result = get_foreign_data(driver, data_list)
     df_all = pd.concat([df_ja_result, df_foreign_result])
 
