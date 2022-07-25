@@ -4,6 +4,7 @@ import json
 import calc
 import util
 import datetime as dt
+import cloudscraper
 
 
 def update_now_value(df):
@@ -147,9 +148,13 @@ def update_foreign_now_value(df):
 
 def get_foreign_quote(code):
     url = 'https://finance.yahoo.com/quote/' + code
-    res = requests.get(url)
+    # print(url)
+    scraper = cloudscraper.create_scraper()
+    res = scraper.get(url)
+    # res = requests.get(url)
     res.encoding = res.apparent_encoding
     soup = BeautifulSoup(res.text, 'html.parser')
+    # print(soup)
     script_tags = soup.select('script')
 
     json_data = None
